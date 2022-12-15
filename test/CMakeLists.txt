@@ -20,8 +20,7 @@ include_directories("../src")
 
 file(GLOB sources
   "../src/*.h"
-  "../src/*.c"
-  "*.c")
+  "../src/*.c")
 
 add_executable(
   emb_rb_test

@@ -1,11 +1,11 @@
 #include "emb_rb.h"
 
 // Initialize the ring buffer
-void emb_rb_init( emb_rb_t *rb, uint8_t *bP, uint32_t size )
+uint32_t emb_rb_init( emb_rb_t *rb, uint8_t *bP, uint32_t size )
 {
     // Null check
     if( !rb || !bP || !size ) {
-        return;
+        return 0;
     }
     rb->bP = bP;
     rb->size = size;
@@ -94,6 +94,7 @@ uint32_t emb_rb_flush( emb_rb_t *rb )
 // Get the number of free bytes in the ring buffer
 uint32_t emb_rb_free_space( emb_rb_t *rb )
 {
+    return rb->size - emb_rb_used_space( rb );
 }
 
 // Get the number of used bytes in the ring buffer
