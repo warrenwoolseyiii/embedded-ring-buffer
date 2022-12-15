@@ -109,36 +109,3 @@ uint32_t emb_rb_used_space( emb_rb_t *rb )
         return rb->head - rb->tail;
     }
 }
-
-#include "emb_rb.h"
-#define RB_SIZE 64
-
-void test()
-{
-    uint8_t  buf[RB_SIZE];
-    emb_rb_t rb;
-
-    // Init the buffer
-    if( emb_rb_init( &rb, buf, RB_SIZE ) ) printf("buffer init success\n");
-  
-  // Queue some bytes
-  uint8_t a_byte = 0x22;
-  uint32_t more_bytes = 0xFFEE2200;
-  char astring[] = "hello let me show you all this stuff";
-  
-  // Queue a byte
-  if( emb_rb_queue(&rb, &a_byte, sizeof(a_byte)) == sizeof(a_byte)) printf("queued %x\n", a_byte);
-  if( emb_rb_queue(&rb, (uint8_t*)&more_bytes, sizeof(more_bytes)) == sizeof(more_bytes)) printf("queued %x\n", more_bytes);
-  if( emb_rb_queue(&rb, (uint8_t*)astring, sizeof(astring)) == sizeof(astring)) printf("queued %s\n", astring);
-  
-  // Check how many bytes are queued
-  printf("we have %d bytes queued\n", emb_rb_used_space(&rb));
-  
-  // Check how many bytes are left
-  printf("we have %d bytes free\n", emb_rb_free_space(&rb));
-  
-  // Dequeue a all the bytes
-  uint8_t readout[RB_SIZE];
-  uint32_t stored = emb_rb_used_space(&rb);
-  if( emb_rb_dequeue(&rb, readout, stored) == stored) printf("read out %d bytes\n", stored);
-}
