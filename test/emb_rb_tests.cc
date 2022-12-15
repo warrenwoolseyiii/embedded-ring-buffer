@@ -1,4 +1,5 @@
 #include <gtest/gtest.h>
+#include <string.h>
 #include "../src/emb_rb.h"
 
 class RBTesting : public ::testing::Test
@@ -74,4 +75,127 @@ TEST_F( RBTesting, Test_Used_Space )
     uint32_t size = 10;
     ASSERT_TRUE( emb_rb_init( &rb, buf, size ) );
     ASSERT_EQ( emb_rb_used_space( &rb ), 0 );
+}
+
+// Ensure that we can queue and dequeue data
+TEST_F( RBTesting, Test_Queue_Dequeue )
+{
+    emb_rb_t rb;
+    uint8_t  buf[10];
+    uint32_t size = 10;
+    uint8_t  data = 0x55;
+    ASSERT_TRUE( emb_rb_init( &rb, buf, size ) );
+    ASSERT_EQ( emb_rb_queue( &rb, &data, 1 ), 1 );
+    ASSERT_EQ( emb_rb_used_space( &rb ), 1 );
+    ASSERT_EQ( emb_rb_free_space( &rb ), size - 1 );
+    uint8_t rd;
+    ASSERT_EQ( emb_rb_dequeue( &rb, &rd, 1 ), 1 );
+    ASSERT_EQ( rd, data );
+    ASSERT_EQ( emb_rb_used_space( &rb ), 0 );
+    ASSERT_EQ( emb_rb_free_space( &rb ), size );
+}
+
+// Ensure that wrap around works properly
+TEST_F( RBTesting, Test_Queue_Overflow )
+{
+    emb_rb_t rb;
+    uint8_t  buf[10];
+    uint32_t size = 10;
+    uint8_t  data[10];
+    ASSERT_TRUE( emb_rb_init( &rb, buf, size ) );
+    ASSERT_EQ( emb_rb_queue( &rb, data, 10 ), 10 );
+    ASSERT_EQ( emb_rb_used_space( &rb ), 10 );
+    ASSERT_EQ( emb_rb_free_space( &rb ), 0 );
+    ASSERT_EQ( emb_rb_queue( &rb, data, 1 ), 0 );
+    ASSERT_EQ( emb_rb_used_space( &rb ), 10 );
+    ASSERT_EQ( emb_rb_free_space( &rb ), 0 );
+    uint8_t rd[10];
+    ASSERT_EQ( emb_rb_dequeue( &rb, rd, 10 ), 10 );
+    ASSERT_EQ( memcmp( data, rd, 10 ), 0 );
+    ASSERT_EQ( emb_rb_used_space( &rb ), 0 );
+    ASSERT_EQ( emb_rb_free_space( &rb ), size );
+}
+
+// Ensure that underflow for reading works properly
+TEST_F( RBTesting, Test_Dequeue_Underflow )
+{
+    emb_rb_t rb;
+    uint8_t  buf[10];
+    uint32_t size = 10;
+    uint8_t  data[10];
+    ASSERT_TRUE( emb_rb_init( &rb, buf, size ) );
+    ASSERT_EQ( emb_rb_queue( &rb, data, 10 ), 10 );
+    ASSERT_EQ( emb_rb_used_space( &rb ), 10 );
+    ASSERT_EQ( emb_rb_free_space( &rb ), 0 );
+    uint8_t rd[10];
+    ASSERT_EQ( emb_rb_dequeue( &rb, rd, 10 ), 10 );
+    ASSERT_EQ( memcmp( data, rd, 10 ), 0 );
+    ASSERT_EQ( emb_rb_used_space( &rb ), 0 );
+    ASSERT_EQ( emb_rb_free_space( &rb ), size );
+    ASSERT_EQ( emb_rb_dequeue( &rb, rd, 1 ), 0 );
+    ASSERT_EQ( emb_rb_used_space( &rb ), 0 );
+    ASSERT_EQ( emb_rb_free_space( &rb ), size );
+}
+
+// Ensure that flushing works properly
+TEST_F( RBTesting, Test_Flush )
+{
+    emb_rb_t rb;
+    uint8_t  buf[10];
+    uint32_t size = 10;
+    uint8_t  data[10];
+    ASSERT_TRUE( emb_rb_init( &rb, buf, size ) );
+    ASSERT_EQ( emb_rb_queue( &rb, data, 10 ), 10 );
+    ASSERT_EQ( emb_rb_used_space( &rb ), 10 );
+    ASSERT_EQ( emb_rb_free_space( &rb ), 0 );
+    emb_rb_flush( &rb );
+    ASSERT_EQ( emb_rb_used_space( &rb ), 0 );
+    ASSERT_EQ( emb_rb_free_space( &rb ), size );
+    emb_rb_flush( &rb );
+    ASSERT_EQ( emb_rb_used_space( &rb ), 0 );
+    ASSERT_EQ( emb_rb_free_space( &rb ), size );
+}
+
+// Ensure that peak works properly
+TEST_F( RBTesting, Test_Peek )
+{
+    emb_rb_t rb;
+    uint8_t  buf[10];
+    uint32_t size = 10;
+    uint8_t  data[10];
+    ASSERT_TRUE( emb_rb_init( &rb, buf, size ) );
+    ASSERT_EQ( emb_rb_queue( &rb, data, 10 ), 10 );
+    ASSERT_EQ( emb_rb_used_space( &rb ), 10 );
+    ASSERT_EQ( emb_rb_free_space( &rb ), 0 );
+    uint8_t rd[10];
+    ASSERT_EQ( emb_rb_peek( &rb, rd, 10 ), 10 );
+    ASSERT_EQ( memcmp( data, rd, 10 ), 0 );
+    ASSERT_EQ( emb_rb_used_space( &rb ), 10 );
+    ASSERT_EQ( emb_rb_free_space( &rb ), 0 );
+    ASSERT_EQ( emb_rb_peek( &rb, rd, 1 ), 1 );
+    ASSERT_EQ( rd[0], data[0] );
+    ASSERT_EQ( emb_rb_used_space( &rb ), 10 );
+    ASSERT_EQ( emb_rb_free_space( &rb ), 0 );
+}
+
+// Ensure that we can't underflow peak
+TEST_F( RBTesting, Test_Peak_Underflow )
+{
+    emb_rb_t rb;
+    uint8_t  buf[10];
+    uint32_t size = 10;
+    uint8_t  data[10];
+    ASSERT_TRUE( emb_rb_init( &rb, buf, size ) );
+    ASSERT_EQ( emb_rb_queue( &rb, data, 10 ), 10 );
+    ASSERT_EQ( emb_rb_used_space( &rb ), 10 );
+    ASSERT_EQ( emb_rb_free_space( &rb ), 0 );
+    uint8_t rd[10];
+    ASSERT_EQ( emb_rb_peek( &rb, rd, 10 ), 10 );
+    ASSERT_EQ( memcmp( data, rd, 10 ), 0 );
+    ASSERT_EQ( emb_rb_used_space( &rb ), 10 );
+    ASSERT_EQ( emb_rb_free_space( &rb ), 0 );
+    ASSERT_EQ( emb_rb_peek( &rb, rd, 11 ), 10 );
+    ASSERT_EQ( memcmp( data, rd, 10 ), 0 );
+    ASSERT_EQ( emb_rb_used_space( &rb ), 10 );
+    ASSERT_EQ( emb_rb_free_space( &rb ), 0 );
 }

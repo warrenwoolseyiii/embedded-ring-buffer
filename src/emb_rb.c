@@ -11,6 +11,7 @@ uint32_t emb_rb_init( emb_rb_t *rb, uint8_t *bP, uint32_t size )
     rb->size = size;
     rb->head = 0;
     rb->tail = 0;
+    return -1;
 }
 
 // Get the total size of the ring buffer
