@@ -45,4 +45,11 @@ void test()
     if( emb_rb_dequeue( &rb, readout, stored ) == stored ) printf( "read out %d bytes\n", stored );
 }
 ```
-  
+# Testing
+```
+cd test
+rm -rf build
+cmake -S . -B build  
+cmake --build build    
+./build/emb_rb_test  
+```
