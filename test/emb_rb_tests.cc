@@ -210,3 +210,12 @@ TEST_F(RBTesting, Test_Peak_Underflow)
    ASSERT_EQ(emb_rb_used_space(&rb), 10);
    ASSERT_EQ(emb_rb_free_space(&rb), 0);
 }
+
+// Test getting the version
+TEST_F(RBTesting, Test_Version)
+{
+   const char *s = emb_rb_get_ver();
+
+   ASSERT_TRUE(s != NULL);
+   printf("emb_rb_version: %s\n", s);
+}

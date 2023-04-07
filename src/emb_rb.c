@@ -1,4 +1,5 @@
 #include "emb_rb.h"
+#include "rb_version.h"
 
 // Initialize the ring buffer
 uint32_t emb_rb_init(emb_rb_t *rb, uint8_t *bP, uint32_t size)
@@ -122,4 +123,33 @@ uint32_t emb_rb_used_space(emb_rb_t *rb)
    {
       return(rb->head - rb->tail);
    }
+}
+
+// Get the version of the library
+const char *emb_rb_get_ver()
+{
+   // Get the major, minor, and rev numbers
+   int major = RB_VERSION_MAJOR;
+   int minor = RB_VERSION_MINOR;
+   int rev   = RB_VERSION_REV;
+
+   // Build the string, without using sprintf
+   static char ver[16];
+
+   ver[0]  = 'v';
+   ver[1]  = (major / 100) + '0';
+   ver[2]  = ((major % 100) / 10) + '0';
+   ver[3]  = (major % 10) + '0';
+   ver[4]  = '.';
+   ver[5]  = (minor / 100) + '0';
+   ver[6]  = ((minor % 100) / 10) + '0';
+   ver[7]  = (minor % 10) + '0';
+   ver[8]  = '.';
+   ver[9]  = (rev / 100) + '0';
+   ver[10] = ((rev % 100) / 10) + '0';
+   ver[11] = (rev % 10) + '0';
+   ver[12] = '\0';
+
+   // Return the string
+   return(ver);
 }

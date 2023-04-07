@@ -22,6 +22,7 @@ uint32_t emb_rb_peek(emb_rb_t *rb, uint8_t *bytes, uint32_t len);
 uint32_t emb_rb_flush(emb_rb_t *rb);
 uint32_t emb_rb_free_space(emb_rb_t *rb);
 uint32_t emb_rb_used_space(emb_rb_t *rb);
+const char *emb_rb_get_ver();
 
 #ifdef __cplusplus
 }
