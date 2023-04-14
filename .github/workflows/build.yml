@@ -23,3 +23,31 @@ jobs:
           cmake --build build
           ./build/emb_rb_test
         working-directory: test
+  Benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        
+      - name: Install Benchmark Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake libbenchmark-dev
+
+      - name: Build and Run Benchmark
+        run: |
+          rm -rf build
+          cmake -S . -B build
+          cmake --build build
+        working-directory: benchmark
+
+      - name: Run Benchmark
+        run: |
+          ./build/benchmark_executable --benchmark_out=benchmark_results.json --benchmark_out_format=json
+        working-directory: benchmark
+
+      - name: Save Benchmark Results
+        uses: actions/upload-artifact@v2
+        with:
+          name: benchmark_results
+          path: benchmark/benchmark_results.json
