@@ -53,3 +53,4 @@ dkms.conf
 
 # Test object files
 test/build
+benchmark/build
