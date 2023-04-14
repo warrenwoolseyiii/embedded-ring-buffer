@@ -42,9 +42,9 @@ uint32_t emb_rb_queue(emb_rb_t *rb, const uint8_t *bytes, uint32_t len)
    {
       len = space;
    }
-// 1. If len is 1, just copy the byte and index since we will have a modulo anyway
-// 2. if len is greater than 1, handle the wrap around
-// 3. otherwise len is 0 and don't do anything
+   // 1. If len is 1, just copy the byte and index since we will have a modulo anyway
+   // 2. if len is greater than 1, handle the wrap around
+   // 3. otherwise len is 0 and don't do anything
    if (len == 1)
    {
       rb->bP[rb->head % rb->size] = *bytes;
@@ -84,8 +84,8 @@ uint32_t emb_rb_dequeue(emb_rb_t *rb, uint8_t *bytes, uint32_t len)
       len = used;
    }
    // 1. If len is 1, just copy the byte and index since we will have a modulo anyway
-// 2. if len is greater than 1, handle the wrap around
-// 3. otherwise len is 0 and don't do anything
+   // 2. if len is greater than 1, handle the wrap around
+   // 3. otherwise len is 0 and don't do anything
    if (len == 1)
    {
       *bytes = rb->bP[rb->tail % rb->size];
@@ -125,8 +125,8 @@ uint32_t emb_rb_peek(emb_rb_t *rb, uint8_t *bytes, uint32_t len)
       len = used;
    }
    // 1. If len is 1, just copy the byte and index since we will have a modulo anyway
-// 2. if len is greater than 1, handle the wrap around
-// 3. otherwise len is 0 and don't do anything
+   // 2. if len is greater than 1, handle the wrap around
+   // 3. otherwise len is 0 and don't do anything
    uint32_t local_tail = rb->tail;
    if (len == 1)
    {
