@@ -28,7 +28,7 @@ uint32_t emb_rb_size(emb_rb_t *rb)
 }
 
 // Queue len nubmer of bytes into the ring buffer, making a deep copy
-uint32_t emb_rb_queue(emb_rb_t *rb, uint8_t *bytes, uint32_t len)
+uint32_t emb_rb_queue(emb_rb_t *rb, const uint8_t *bytes, uint32_t len)
 {
    // Null check
    if (!rb || !bytes || !len)

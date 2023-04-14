@@ -7,11 +7,13 @@ extern "C"
 #endif
 
 #include <stdint.h>
+#include <stddef.h>
 
 typedef struct
 {
    uint8_t *bP;
-   uint32_t size, head, tail;
+   uint32_t size;
+   size_t   head, tail;
 } emb_rb_t;
 
 /**
@@ -40,7 +42,7 @@ uint32_t emb_rb_size(emb_rb_t *rb);
  * @param len number of bytes we want to queue
  * @return uint32_t number of bytes queued
  */
-uint32_t emb_rb_queue(emb_rb_t *rb, uint8_t *bytes, uint32_t len);
+uint32_t emb_rb_queue(emb_rb_t *rb, const uint8_t *bytes, uint32_t len);
 
 /**
  * @brief Dequeue len number of bytes from the ring buffer
