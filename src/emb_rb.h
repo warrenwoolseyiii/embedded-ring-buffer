@@ -14,14 +14,83 @@ typedef struct
    uint32_t size, head, tail;
 } emb_rb_t;
 
-uint32_t emb_rb_init(emb_rb_t *rb, uint8_t *bP, uint32_t size);
+/**
+ * @brief Initialize the ring buffer
+ *
+ * @param rb pointer to the ring buffer we want to initialize
+ * @param bP pointer to the buffer we want to use
+ * @param size size of the buffer we want to use
+ * @return uint32_t returns 0 on failure, -1 on success
+ */
+int emb_rb_init(emb_rb_t *rb, uint8_t *bP, uint32_t size);
+
+/**
+ * @brief Get the total size of the ring buffer
+ *
+ * @param rb pointer to the ring buffer we want to get the size of
+ * @return uint32_t the size of the ring buffer in bytes
+ */
 uint32_t emb_rb_size(emb_rb_t *rb);
+
+/**
+ * @brief Queue len nubmer of bytes into the ring buffer, making a deep copy
+ *
+ * @param rb pointer to the ring buffer we want to queue bytes into
+ * @param bytes pointer to the bytes we want to queue
+ * @param len number of bytes we want to queue
+ * @return uint32_t number of bytes queued
+ */
 uint32_t emb_rb_queue(emb_rb_t *rb, uint8_t *bytes, uint32_t len);
+
+/**
+ * @brief Dequeue len number of bytes from the ring buffer
+ *
+ * @param rb pointer to the ring buffer we want to dequeue bytes from
+ * @param bytes pointer to the bytes we want to dequeue
+ * @param len number of bytes we want to dequeue
+ * @return uint32_t number of bytes dequeued
+ */
 uint32_t emb_rb_dequeue(emb_rb_t *rb, uint8_t *bytes, uint32_t len);
+
+/**
+ * @brief Peek len number of bytes from the ring buffer without dequeuing
+ *
+ * @param rb pointer to the ring buffer we want to peek bytes from
+ * @param bytes pointer to the bytes we want to peek
+ * @param len number of bytes we want to peek
+ * @return uint32_t number of bytes peeked
+ */
 uint32_t emb_rb_peek(emb_rb_t *rb, uint8_t *bytes, uint32_t len);
-uint32_t emb_rb_flush(emb_rb_t *rb);
+
+/**
+ * @brief Flush the ring buffer
+ *
+ * @param rb pointer to the ring buffer we want to flush
+ * @return uint32_t returns 0 on failure, -1 on success
+ */
+int emb_rb_flush(emb_rb_t *rb);
+
+/**
+ * @brief Get the free space in the ring buffer
+ *
+ * @param rb pointer to the ring buffer we want to get the free space of
+ * @return uint32_t free space in the ring buffer in bytes
+ */
 uint32_t emb_rb_free_space(emb_rb_t *rb);
+
+/**
+ * @brief Get the used space in the ring buffer
+ *
+ * @param rb pointer to the ring buffer we want to get the used space of
+ * @return uint32_t used space in the ring buffer in bytes
+ */
 uint32_t emb_rb_used_space(emb_rb_t *rb);
+
+/**
+ * @brief Get the version of the library
+ *
+ * @return const char* version string
+ */
 const char *emb_rb_get_ver();
 
 #ifdef __cplusplus

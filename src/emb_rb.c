@@ -2,7 +2,7 @@
 #include "rb_version.h"
 
 // Initialize the ring buffer
-uint32_t emb_rb_init(emb_rb_t *rb, uint8_t *bP, uint32_t size)
+int emb_rb_init(emb_rb_t *rb, uint8_t *bP, uint32_t size)
 {
    // Null check
    if (!rb || !bP || !size)
@@ -95,7 +95,7 @@ uint32_t emb_rb_peek(emb_rb_t *rb, uint8_t *bytes, uint32_t len)
 }
 
 // Effectively empty the buffer by setting the tail vaule to the head value
-uint32_t emb_rb_flush(emb_rb_t *rb)
+int emb_rb_flush(emb_rb_t *rb)
 {
    // Null check
    if (!rb)
@@ -103,6 +103,7 @@ uint32_t emb_rb_flush(emb_rb_t *rb)
       return(0);
    }
    rb->tail = rb->head;
+   return(-1);
 }
 
 // Get the number of free bytes in the ring buffer
