@@ -66,17 +66,25 @@ uint32_t emb_rb_dequeue(emb_rb_t *rb, uint8_t *bytes, uint32_t len)
    {
       return(0);
    }
-   // Check if there is enough data
-   if (len > emb_rb_used_space(rb))
+   // Check if there is enough used space
+   uint32_t used = emb_rb_used_space(rb);
+   if (len > used)
    {
-      len = emb_rb_used_space(rb);
+      len = used;
    }
-   // Copy bytes
-   for (uint32_t i = 0; i < len; i++)
+   // Optimize for speed, handle an index wrap around
+   uint32_t cur_index     = rb->tail % rb->size;
+   uint32_t len_till_wrap = rb->size - cur_index;
+   uint32_t n             = len;
+   if (n > len_till_wrap)
    {
-      bytes[i] = rb->bP[rb->tail % rb->size];
-      rb->tail++;
+      memcpy(bytes, rb->bP + cur_index, len_till_wrap);
+      bytes    += len_till_wrap;
+      n        -= len_till_wrap;
+      cur_index = 0;
    }
+   memcpy(bytes, rb->bP + cur_index, n);
+   rb->tail += len;
    return(len);
 }
 
