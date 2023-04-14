@@ -1,5 +1,6 @@
 #include "emb_rb.h"
 #include "rb_version.h"
+#include <string.h>
 
 // Initialize the ring buffer
 int emb_rb_init(emb_rb_t *rb, uint8_t *bP, uint32_t size)
@@ -35,17 +36,25 @@ uint32_t emb_rb_queue(emb_rb_t *rb, const uint8_t *bytes, uint32_t len)
    {
       return(0);
    }
-   // Check if there is enough space
-   if (len > emb_rb_free_space(rb))
+   // Check if there is enough free space
+   uint32_t space = emb_rb_free_space(rb);
+   if (len > space)
    {
-      len = emb_rb_free_space(rb);
+      len = space;
    }
-   // Copy bytes
-   for (uint32_t i = 0; i < len; i++)
+   // Optimize for speed, handle an index wrap around
+   uint32_t cur_index     = rb->head % rb->size;
+   uint32_t len_till_wrap = rb->size - cur_index;
+   uint32_t n             = len;
+   if (n > len_till_wrap)
    {
-      rb->bP[rb->head % rb->size] = bytes[i];
-      rb->head++;
+      memcpy(rb->bP + cur_index, bytes, len_till_wrap);
+      bytes    += len_till_wrap;
+      n        -= len_till_wrap;
+      cur_index = 0;
    }
+   memcpy(rb->bP + cur_index, bytes, n);
+   rb->head += len;
    return(len);
 }
 

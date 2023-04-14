@@ -123,6 +123,32 @@ TEST_F(RBTesting, Test_Queue_Overflow)
    ASSERT_EQ(emb_rb_free_space(&rb), size);
 }
 
+// Ensure that wrap around works properly at the end of the buffer
+TEST_F(RBTesting, Test_Queue_Overflow_End)
+{
+   emb_rb_t rb;
+   uint8_t  buf[10];
+   uint32_t size = 10;
+   uint8_t  data[10];
+
+   ASSERT_TRUE(emb_rb_init(&rb, buf, size));
+   ASSERT_EQ(emb_rb_queue(&rb, data, 9), 9);
+   ASSERT_EQ(emb_rb_used_space(&rb), 9);
+   ASSERT_EQ(emb_rb_free_space(&rb), 1);
+   uint8_t rd[10];
+   ASSERT_EQ(emb_rb_dequeue(&rb, rd, 9), 9);
+   ASSERT_EQ(memcmp(data, rd, 9), 0);
+   ASSERT_EQ(emb_rb_used_space(&rb), 0);
+   ASSERT_EQ(emb_rb_free_space(&rb), size);
+   ASSERT_EQ(emb_rb_queue(&rb, data, 10), 10);
+   ASSERT_EQ(emb_rb_used_space(&rb), 10);
+   ASSERT_EQ(emb_rb_free_space(&rb), 0);
+   ASSERT_EQ(emb_rb_dequeue(&rb, rd, 10), 10);
+   ASSERT_EQ(memcmp(data, rd, 10), 0);
+   ASSERT_EQ(emb_rb_used_space(&rb), 0);
+   ASSERT_EQ(emb_rb_free_space(&rb), size);
+}
+
 // Ensure that underflow for reading works properly
 TEST_F(RBTesting, Test_Dequeue_Underflow)
 {
