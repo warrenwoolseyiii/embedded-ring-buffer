@@ -179,16 +179,17 @@ uint32_t emb_rb_insert(emb_rb_t *rb, uint32_t position, const uint8_t *bytes, ui
       }
    }
 
-   // Copy the data from position to head to the right by len bytes
+   // Calculate the real position in the buffer
    uint32_t pos_index = (rb->tail + position) % rb->size;
-   for (uint32_t i = 0; i < len; i++)
-   {
-      emb_rb_queue(rb, &rb->bP[pos_index], 1);
-      pos_index = (pos_index + 1) % rb->size;
-   }
+   uint32_t end_index = (rb->tail + emb_rb_used_space(rb)) % rb->size;
+
+   // Calculate the displacement considering the circular buffer.
+   uint32_t displacement = (pos_index > end_index) ? (rb->size - pos_index + end_index) : (end_index - pos_index);
+
+   // Copy the data from position to head to the right by len bytes.
+   memmove(rb->bP + (pos_index + len) % rb->size, rb->bP + pos_index, displacement);
 
    // Back fill the original data at position
-   pos_index = (rb->tail + position) % rb->size;
    uint32_t len_till_wrap = rb->size - pos_index;
    uint32_t n             = len;
    if (n > len_till_wrap)
@@ -199,6 +200,7 @@ uint32_t emb_rb_insert(emb_rb_t *rb, uint32_t position, const uint8_t *bytes, ui
       pos_index = 0;
    }
    memcpy(rb->bP + pos_index, bytes, n);
+   rb->head += len;
    return(len);
 }
 
