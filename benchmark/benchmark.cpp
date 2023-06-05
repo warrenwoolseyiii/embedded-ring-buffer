@@ -96,6 +96,24 @@ static void BM_memcpy(benchmark::State& state)
 
 BENCHMARK(BM_memcpy)->Range(8, 512);
 
+// Benchmark insert into an existing buffer
+static void BM_insert(benchmark::State& state)
+{
+   uint32_t len = state.range(0);
+   uint32_t n   = 0;
+
+   emb_rb_queue(&rb, pattern, len);
+
+   for (auto _ : state)
+   {
+      n += emb_rb_insert(&rb, 0, pattern, len, 1);
+   }
+   benchmark::DoNotOptimize(n);
+   state.SetBytesProcessed(len * state.iterations());
+}
+
+BENCHMARK(BM_insert)->Range(8, 512);
+
 // Main function to initialize the ring buffer and run benchmarks
 int main(int argc, char **argv)
 {
