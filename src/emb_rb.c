@@ -150,6 +150,60 @@ uint32_t emb_rb_peek(emb_rb_t *rb, uint8_t *bytes, uint32_t len)
    return(len);
 }
 
+// Insert len number of bytes into the ring buffer at position
+uint32_t emb_rb_insert(emb_rb_t *rb, uint32_t position, const uint8_t *bytes, uint32_t len, uint8_t all_or_nothing)
+{
+   // Null check
+   if (!rb || !bytes || !len)
+   {
+      return(0);
+   }
+
+   // Illegal position check
+   if (position > rb->size || (position > emb_rb_used_space(rb)))
+   {
+      return(0);
+   }
+
+   // Check if there is enough free space
+   uint32_t space = emb_rb_free_space(rb);
+   if (len > space)
+   {
+      if (all_or_nothing)
+      {
+         return(0);
+      }
+      else
+      {
+         len = space;
+      }
+   }
+
+   // Calculate the real position in the buffer
+   uint32_t pos_index = (rb->tail + position) % rb->size;
+   uint32_t end_index = (rb->tail + emb_rb_used_space(rb)) % rb->size;
+
+   // Calculate the displacement considering the circular buffer.
+   uint32_t displacement = (pos_index > end_index) ? (rb->size - pos_index + end_index) : (end_index - pos_index);
+
+   // Copy the data from position to head to the right by len bytes.
+   memmove(rb->bP + (pos_index + len) % rb->size, rb->bP + pos_index, displacement);
+
+   // Back fill the original data at position
+   uint32_t len_till_wrap = rb->size - pos_index;
+   uint32_t n             = len;
+   if (n > len_till_wrap)
+   {
+      memcpy(rb->bP + pos_index, bytes, len_till_wrap);
+      bytes    += len_till_wrap;
+      n        -= len_till_wrap;
+      pos_index = 0;
+   }
+   memcpy(rb->bP + pos_index, bytes, n);
+   rb->head += len;
+   return(len);
+}
+
 // Effectively empty the buffer by setting the tail vaule to the head value
 int emb_rb_flush(emb_rb_t *rb)
 {
