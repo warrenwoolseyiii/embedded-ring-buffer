@@ -65,6 +65,18 @@ uint32_t emb_rb_dequeue(emb_rb_t *rb, uint8_t *bytes, uint32_t len);
 uint32_t emb_rb_peek(emb_rb_t *rb, uint8_t *bytes, uint32_t len);
 
 /**
+ * @brief Insert len number of bytes into the ring buffer at position
+ *
+ * @param rb pointer to the ring buffer we want to insert bytes into
+ * @param position the position offset from the tail we want to insert bytes
+ * @param bytes pointer to the bytes we want to insert
+ * @param len the number of bytes we want to insert
+ * @param all_or_nothing flag to indicate if we want to insert all or nothing, 1 for all or nothing, 0 for do as much as you can
+ * @return uint32_t number of bytes inserted
+ */
+uint32_t emb_rb_insert(emb_rb_t *rb, uint32_t position, const uint8_t *bytes, uint32_t len, uint8_t all_or_nothing);
+
+/**
  * @brief Flush the ring buffer
  *
  * @param rb pointer to the ring buffer we want to flush
