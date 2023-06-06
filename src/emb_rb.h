@@ -35,6 +35,15 @@ int emb_rb_init(emb_rb_t *rb, uint8_t *bP, uint32_t size);
 uint32_t emb_rb_size(emb_rb_t *rb);
 
 /**
+ * @brief Queue a single byte into the ring buffer, making a deep copy
+ *
+ * @param rb pointer to the ring buffer we want to queue a byte into
+ * @param byte the byte we want to queue
+ * @return uint8_t 1 if successful, 0 if not
+ */
+uint8_t emb_rb_queue_single(emb_rb_t *rb, uint8_t byte);
+
+/**
  * @brief Queue len nubmer of bytes into the ring buffer, making a deep copy
  *
  * @param rb pointer to the ring buffer we want to queue bytes into
