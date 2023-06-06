@@ -335,6 +335,35 @@ TEST_F(RBTesting, Test_Insert_Failure_Path)
    ASSERT_EQ(memcmp(data2, &rd[10], 10), 0);
 }
 
+// Test single queue just for completeness
+TEST_F(RBTesting, Test_Single_Queue)
+{
+   emb_rb_t rb;
+   uint8_t  buf[20];
+   uint32_t size = 20;
+
+   // Fill the buffer
+   ASSERT_TRUE(emb_rb_init(&rb, buf, size));
+   for (int i = 0; i < size; i++)
+   {
+      ASSERT_EQ(emb_rb_queue_single(&rb, (uint8_t)i), 1);
+   }
+   ASSERT_EQ(emb_rb_used_space(&rb), size);
+   ASSERT_EQ(emb_rb_free_space(&rb), 0);
+
+   // Try to overflow
+   ASSERT_EQ(emb_rb_queue_single(&rb, 0), 0);
+
+   uint8_t rd[20];
+   ASSERT_EQ(emb_rb_dequeue(&rb, rd, 20), 20);
+   for (int i = 0; i < size; i++)
+   {
+      ASSERT_EQ(rd[i], (uint8_t)i);
+   }
+   ASSERT_EQ(emb_rb_used_space(&rb), 0);
+   ASSERT_EQ(emb_rb_free_space(&rb), size);
+}
+
 // Test getting the version
 TEST_F(RBTesting, Test_Version)
 {
