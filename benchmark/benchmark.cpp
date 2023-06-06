@@ -114,6 +114,23 @@ static void BM_insert(benchmark::State& state)
 
 BENCHMARK(BM_insert)->Range(8, 512);
 
+// Benchmark single queue
+static void BM_single_queue(benchmark::State& state)
+{
+   uint32_t len = state.range(0);
+   uint32_t n   = 0;
+
+   for (auto _ : state)
+   {
+      n += emb_rb_queue_single(&rb, pattern[n]);
+      n %= sizeof(pattern);
+   }
+   benchmark::DoNotOptimize(n);
+   state.SetBytesProcessed(len * state.iterations());
+}
+
+BENCHMARK(BM_single_queue)->Range(8, 512);
+
 // Main function to initialize the ring buffer and run benchmarks
 int main(int argc, char **argv)
 {

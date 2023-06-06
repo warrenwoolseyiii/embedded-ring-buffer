@@ -28,6 +28,25 @@ uint32_t emb_rb_size(emb_rb_t *rb)
    return(rb->size);
 }
 
+// Queue a single byte into the ring buffer, making a deep copy
+uint8_t emb_rb_queue_single(emb_rb_t *rb, uint8_t byte)
+{
+   // Null check
+   if (!rb)
+   {
+      return(0);
+   }
+   // Check if there is enough free space
+   if (!emb_rb_free_space(rb))
+   {
+      return(0);
+   }
+   // Queue the byte
+   rb->bP[rb->head % rb->size] = byte;
+   rb->head++;
+   return(1);
+}
+
 // Queue len nubmer of bytes into the ring buffer, making a deep copy
 uint32_t emb_rb_queue(emb_rb_t *rb, const uint8_t *bytes, uint32_t len)
 {
