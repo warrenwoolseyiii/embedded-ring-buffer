@@ -129,24 +129,28 @@ uint32_t emb_rb_dequeue(emb_rb_t *rb, uint8_t *bytes, uint32_t len)
    return(len);
 }
 
-// Peek len number of bytes from the ring buffer without dequeuing
-uint32_t emb_rb_peek(emb_rb_t *rb, uint8_t *bytes, uint32_t len)
+// Peek len number of bytes at position, from the ring buffer without dequeuing
+uint32_t emb_rb_peek(emb_rb_t *rb, uint32_t position, uint8_t *bytes, uint32_t len)
 {
    // Null check
    if (!rb || !bytes || !len)
    {
       return(0);
    }
-   // Check if there is enough used space
-   uint32_t used = emb_rb_used_space(rb);
-   if (len > used)
+   // Illegal position check
+   if (position > rb->size || (position > emb_rb_used_space(rb)))
    {
-      len = used;
+      return(0);
+   }
+   // Illegal length + position check
+   if (position + len > emb_rb_used_space(rb))
+   {
+      len = emb_rb_used_space(rb) - position;
    }
    // 1. If len is 1, just copy the byte and index since we will have a modulo anyway
    // 2. if len is greater than 1, handle the wrap around
    // 3. otherwise len is 0 and don't do anything
-   uint32_t local_tail = rb->tail;
+   uint32_t local_tail = rb->tail + position;
    if (len == 1)
    {
       *bytes = rb->bP[local_tail % rb->size];
@@ -177,7 +181,6 @@ uint32_t emb_rb_insert(emb_rb_t *rb, uint32_t position, const uint8_t *bytes, ui
    {
       return(0);
    }
-
    // Illegal position check
    if (position > rb->size || (position > emb_rb_used_space(rb)))
    {
@@ -223,6 +226,72 @@ uint32_t emb_rb_insert(emb_rb_t *rb, uint32_t position, const uint8_t *bytes, ui
    return(len);
 }
 
+// Remove len number of bytes from the ring buffer at position
+uint32_t emb_rb_remove(emb_rb_t *rb, uint32_t position, uint8_t *bytes, uint32_t len, uint8_t all_or_nothing)
+{
+   // Null check
+   if (!rb || !bytes || !len)
+   {
+      return(0);
+   }
+   // Illegal position check
+   if (position > rb->size || position > emb_rb_used_space(rb))
+   {
+      return(0);
+   }
+
+   // Calculate the real position in the buffer
+   uint32_t pos_index = (rb->tail + position) % rb->size;
+   uint32_t end_index = rb->head % rb->size;
+
+   // Calculate the displacement considering the circular buffer.
+   uint32_t displacement = (end_index > pos_index) ? (end_index - pos_index) : (rb->size + end_index - pos_index);
+
+   // Respect all or nothing
+   if (displacement < len)
+   {
+      if (all_or_nothing)
+      {
+         return(0);
+      }
+      else
+      {
+         len = displacement;
+      }
+   }
+
+   // Copy the bytes to be removed, if requested.
+   uint32_t len_till_wrap = rb->size - pos_index;
+   uint32_t n             = len;
+   if (bytes != NULL)
+   {
+      if (n > len_till_wrap)
+      {
+         memcpy(bytes, rb->bP + pos_index, len_till_wrap);
+         bytes    += len_till_wrap;
+         n        -= len_till_wrap;
+         pos_index = 0;
+      }
+      memcpy(bytes, rb->bP + pos_index, n);
+   }
+
+   // Remove the data by shifting the rest of the data left.
+   n         = len;
+   pos_index = (rb->tail + position) % rb->size;
+   if (n > len_till_wrap)
+   {
+      memmove(rb->bP + pos_index, rb->bP + pos_index + len_till_wrap, len_till_wrap);
+      n        -= len_till_wrap;
+      pos_index = 0;
+   }
+   memmove(rb->bP, rb->bP + n, n);
+
+   // Adjust the head of the buffer.
+   rb->head -= len;
+
+   return(len);
+}
+
 // Effectively empty the buffer by setting the tail vaule to the head value
 int emb_rb_flush(emb_rb_t *rb)
 {
@@ -233,6 +302,24 @@ int emb_rb_flush(emb_rb_t *rb)
    }
    rb->tail = rb->head;
    return(-1);
+}
+
+// Do a partial flush of len bytes from the tail
+uint32_t emb_rb_flush_partial(emb_rb_t *rb, uint32_t len)
+{
+   // Null check
+   if (!rb)
+   {
+      return(0);
+   }
+   // Check if there is enough used space
+   uint32_t used = emb_rb_used_space(rb);
+   if (len > used)
+   {
+      len = used;
+   }
+   rb->tail += len;
+   return(len);
 }
 
 // Get the number of free bytes in the ring buffer
