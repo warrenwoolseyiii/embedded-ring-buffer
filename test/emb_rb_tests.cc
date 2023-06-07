@@ -204,11 +204,11 @@ TEST_F(RBTesting, Test_Peek)
    ASSERT_EQ(emb_rb_used_space(&rb), 10);
    ASSERT_EQ(emb_rb_free_space(&rb), 0);
    uint8_t rd[10];
-   ASSERT_EQ(emb_rb_peek(&rb, rd, 10), 10);
+   ASSERT_EQ(emb_rb_peek(&rb, 0, rd, 10), 10);
    ASSERT_EQ(memcmp(data, rd, 10), 0);
    ASSERT_EQ(emb_rb_used_space(&rb), 10);
    ASSERT_EQ(emb_rb_free_space(&rb), 0);
-   ASSERT_EQ(emb_rb_peek(&rb, rd, 1), 1);
+   ASSERT_EQ(emb_rb_peek(&rb, 0, rd, 1), 1);
    ASSERT_EQ(rd[0], data[0]);
    ASSERT_EQ(emb_rb_used_space(&rb), 10);
    ASSERT_EQ(emb_rb_free_space(&rb), 0);
@@ -227,11 +227,11 @@ TEST_F(RBTesting, Test_Peak_Underflow)
    ASSERT_EQ(emb_rb_used_space(&rb), 10);
    ASSERT_EQ(emb_rb_free_space(&rb), 0);
    uint8_t rd[10];
-   ASSERT_EQ(emb_rb_peek(&rb, rd, 10), 10);
+   ASSERT_EQ(emb_rb_peek(&rb, 0, rd, 10), 10);
    ASSERT_EQ(memcmp(data, rd, 10), 0);
    ASSERT_EQ(emb_rb_used_space(&rb), 10);
    ASSERT_EQ(emb_rb_free_space(&rb), 0);
-   ASSERT_EQ(emb_rb_peek(&rb, rd, 11), 10);
+   ASSERT_EQ(emb_rb_peek(&rb, 0, rd, 11), 10);
    ASSERT_EQ(memcmp(data, rd, 10), 0);
    ASSERT_EQ(emb_rb_used_space(&rb), 10);
    ASSERT_EQ(emb_rb_free_space(&rb), 0);
@@ -362,6 +362,116 @@ TEST_F(RBTesting, Test_Single_Queue)
    }
    ASSERT_EQ(emb_rb_used_space(&rb), 0);
    ASSERT_EQ(emb_rb_free_space(&rb), size);
+}
+
+// Comprehensive test for insert
+TEST_F(RBTesting, Test_Insert_Comprehensive)
+{
+   emb_rb_t rb;
+   uint8_t  buf[512];
+   uint32_t size       = 512;
+   uint8_t  pattern[8] = { 0x01, 0x02, 0x03, 0x04,
+                           0x05,  0x06, 0x07, 0x08 };
+
+   // Fill the buffer all the way up
+   ASSERT_TRUE(emb_rb_init(&rb, buf, size));
+   for (int i = 0; i < size; i += 8)
+   {
+      ASSERT_EQ(emb_rb_queue(&rb, pattern, 8), 8);
+   }
+
+   // Empty the buffer all the way out, validate the reads
+   uint8_t rd[8];
+   for (int i = 0; i < size; i += 8)
+   {
+      ASSERT_EQ(emb_rb_dequeue(&rb, rd, 8), 8);
+      ASSERT_EQ(memcmp(pattern, rd, 8), 0);
+   }
+
+   // Fill the buffer half way up
+   for (int i = 0; i < size / 2; i += 8)
+   {
+      ASSERT_EQ(emb_rb_queue(&rb, pattern, 8), 8);
+   }
+
+   // Insert at the base, fill it all the way
+   for (int i = 0; i < size / 2; i += 8)
+   {
+      ASSERT_EQ(emb_rb_insert(&rb, i, pattern, 8, 1), 8);
+   }
+
+   // Read the entire buffer, ensure it's correct
+   for (int i = 0; i < size; i += 8)
+   {
+      ASSERT_EQ(emb_rb_dequeue(&rb, rd, 8), 8);
+      ASSERT_EQ(memcmp(pattern, rd, 8), 0);
+   }
+
+   // Now try to insert with an illegal offset
+   ASSERT_EQ(emb_rb_insert(&rb, 1, pattern, 8, 1), 0);
+
+   // Now fill half the buffer
+   for (int i = 0; i < size / 2; i += 8)
+   {
+      ASSERT_EQ(emb_rb_queue(&rb, pattern, 8), 8);
+   }
+
+   // Now try and insert with a large offest of 128 bytes, fill the buffer
+   for (int i = 0; i < size / 2; i += 8)
+   {
+      ASSERT_EQ(emb_rb_insert(&rb, i + 128, pattern, 8, 1), 8);
+   }
+
+   // Now read it all back and verify
+   for (int i = 0; i < size; i += 8)
+   {
+      ASSERT_EQ(emb_rb_dequeue(&rb, rd, 8), 8);
+      ASSERT_EQ(memcmp(pattern, rd, 8), 0);
+   }
+}
+
+// Test peek with an offset
+TEST_F(RBTesting, Test_Peek_Offset)
+{
+   emb_rb_t rb;
+   uint8_t  buf[20];
+   uint32_t size = 20;
+   uint8_t  data1[10];
+   uint8_t  data2[15];
+
+   ASSERT_TRUE(emb_rb_init(&rb, buf, size));
+   ASSERT_EQ(emb_rb_queue(&rb, data1, 10), 10);
+   ASSERT_EQ(emb_rb_queue(&rb, data2, 5), 5);
+
+   uint8_t rd[20];
+   ASSERT_EQ(emb_rb_peek(&rb, 0, rd, 20), 15);
+   ASSERT_EQ(memcmp(data1, rd, 10), 0);
+   ASSERT_EQ(memcmp(data2, &rd[10], 5), 0);
+   ASSERT_EQ(emb_rb_peek(&rb, 10, rd, 20), 5);
+   ASSERT_EQ(memcmp(data2, rd, 5), 0);
+}
+
+// Test partial flush
+TEST_F(RBTesting, Test_Partial_Flush)
+{
+   emb_rb_t rb;
+   uint8_t  buf[20];
+   uint32_t size        = 20;
+   uint8_t  pattern[10] = { 0x01, 0x02, 0x03, 0x04,
+                            0x05,  0x06, 0x07, 0x08,0x69, 0x69 };
+
+   // Fill the buffer
+   ASSERT_TRUE(emb_rb_init(&rb, buf, size));
+   ASSERT_EQ(emb_rb_queue(&rb, pattern, 10), 10);
+   ASSERT_EQ(emb_rb_queue(&rb, pattern, 10), 10);
+
+   // Partial flush the first 15 bytes
+   ASSERT_EQ(emb_rb_flush_partial(&rb, 15), 15);
+   ASSERT_EQ(emb_rb_used_space(&rb), 5);
+   ASSERT_EQ(emb_rb_free_space(&rb), 15);
+   uint8_t rd[5];
+   ASSERT_EQ(emb_rb_dequeue(&rb, rd, 5), 5);
+   ASSERT_EQ(memcmp(&pattern[5], rd, 5), 0);
 }
 
 // Test getting the version
