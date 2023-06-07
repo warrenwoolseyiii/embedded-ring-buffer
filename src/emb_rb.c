@@ -230,7 +230,7 @@ uint32_t emb_rb_insert(emb_rb_t *rb, uint32_t position, const uint8_t *bytes, ui
 uint32_t emb_rb_remove(emb_rb_t *rb, uint32_t position, uint8_t *bytes, uint32_t len, uint8_t all_or_nothing)
 {
    // Null check
-   if (!rb || !bytes || !len)
+   if (!rb || !len)
    {
       return(0);
    }
@@ -248,6 +248,10 @@ uint32_t emb_rb_remove(emb_rb_t *rb, uint32_t position, uint8_t *bytes, uint32_t
    uint32_t displacement = (end_index > pos_index) ? (end_index - pos_index) : (rb->size + end_index - pos_index);
 
    // Respect all or nothing
+   if (emb_rb_used_space(rb) == 0)
+   {
+      return(0);
+   }
    if (displacement < len)
    {
       if (all_or_nothing)

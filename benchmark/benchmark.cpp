@@ -49,6 +49,8 @@ static void BM_peek(benchmark::State& state)
    uint32_t len = state.range(0);
    uint32_t n   = 0;
 
+   //emb_rb_queue(&rb, pattern, len);
+
    for (auto _ : state)
    {
       n += emb_rb_peek(&rb, 0, pattern, len);
@@ -130,6 +132,24 @@ static void BM_single_queue(benchmark::State& state)
 }
 
 BENCHMARK(BM_single_queue)->Range(8, 512);
+
+// Benchmark remove
+static void BM_remove(benchmark::State& state)
+{
+   uint32_t len = state.range(0);
+   uint32_t n   = 0;
+
+   emb_rb_queue(&rb, pattern, len);
+
+   for (auto _ : state)
+   {
+      n += emb_rb_remove(&rb, 0, pattern, len, 1);
+   }
+   benchmark::DoNotOptimize(n);
+   state.SetBytesProcessed(len * state.iterations());
+}
+
+BENCHMARK(BM_remove)->Range(8, 512);
 
 // Main function to initialize the ring buffer and run benchmarks
 int main(int argc, char **argv)

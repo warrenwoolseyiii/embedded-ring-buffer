@@ -3,6 +3,6 @@
 
 #define RB_VERSION_MAJOR    1
 #define RB_VERSION_MINOR    0
-#define RB_VERSION_REV      20
+#define RB_VERSION_REV      21
 
 #endif /* RB_VERSION_H */
