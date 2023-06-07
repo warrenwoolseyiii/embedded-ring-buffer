@@ -51,7 +51,7 @@ static void BM_peek(benchmark::State& state)
 
    for (auto _ : state)
    {
-      n += emb_rb_peek(&rb, pattern, len);
+      n += emb_rb_peek(&rb, 0, pattern, len);
    }
    benchmark::DoNotOptimize(n);
    state.SetBytesProcessed(len * state.iterations());

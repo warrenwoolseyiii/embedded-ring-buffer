@@ -67,11 +67,12 @@ uint32_t emb_rb_dequeue(emb_rb_t *rb, uint8_t *bytes, uint32_t len);
  * @brief Peek len number of bytes from the ring buffer without dequeuing
  *
  * @param rb pointer to the ring buffer we want to peek bytes from
+ * @param position the position offset from the tail we want to peek bytes
  * @param bytes pointer to the bytes we want to peek
  * @param len number of bytes we want to peek
  * @return uint32_t number of bytes peeked
  */
-uint32_t emb_rb_peek(emb_rb_t *rb, uint8_t *bytes, uint32_t len);
+uint32_t emb_rb_peek(emb_rb_t *rb, uint32_t position, uint8_t *bytes, uint32_t len);
 
 /**
  * @brief Insert len number of bytes into the ring buffer at position
@@ -86,12 +87,33 @@ uint32_t emb_rb_peek(emb_rb_t *rb, uint8_t *bytes, uint32_t len);
 uint32_t emb_rb_insert(emb_rb_t *rb, uint32_t position, const uint8_t *bytes, uint32_t len, uint8_t all_or_nothing);
 
 /**
+ * @brief Remove len number of bytes from the ring buffer at position
+ *
+ * @param rb pointer to the ring buffer we want to remove bytes from
+ * @param position the position offset from the tail we want to remove bytes
+ * @param bytes pointer to the bytes we want to remove
+ * @param len the number of bytes we want to remove
+ * @param all_or_nothing flag to indicate if we want to remove all or nothing, 1 for all or nothing, 0 for do as much as you can
+ * @return uint32_t number of bytes removed
+ */
+uint32_t emb_rb_remove(emb_rb_t *rb, uint32_t position, uint8_t *bytes, uint32_t len, uint8_t all_or_nothing);
+
+/**
  * @brief Flush the ring buffer
  *
  * @param rb pointer to the ring buffer we want to flush
  * @return uint32_t returns 0 on failure, -1 on success
  */
 int emb_rb_flush(emb_rb_t *rb);
+
+/**
+ * @brief Flush len number of bytes from the ring buffer
+ *
+ * @param rb pointer to the ring buffer we want to flush bytes from
+ * @param len number of bytes we want to flush
+ * @return uint32_t number of bytes flushed
+ */
+uint32_t emb_rb_flush_partial(emb_rb_t *rb, uint32_t len);
 
 /**
  * @brief Get the free space in the ring buffer
