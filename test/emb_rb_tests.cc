@@ -474,6 +474,79 @@ TEST_F(RBTesting, Test_Partial_Flush)
    ASSERT_EQ(memcmp(&pattern[5], rd, 5), 0);
 }
 
+// Test remove comprehensive
+TEST_F(RBTesting, Test_Remove_Comprehensive)
+{
+   emb_rb_t rb;
+   uint8_t  buf[512];
+   uint32_t size       = 512;
+   uint8_t  pattern[8] = { 0x01, 0x02, 0x03, 0x04,
+                           0x05,  0x06, 0x07, 0x08 };
+
+   // Fill the buffer all the way up
+   ASSERT_TRUE(emb_rb_init(&rb, buf, size));
+   for (int i = 0; i < size; i += 8)
+   {
+      ASSERT_EQ(emb_rb_queue(&rb, pattern, 8), 8);
+   }
+
+   // Remove the first 8 bytes
+   uint8_t rd[8];
+   ASSERT_EQ(emb_rb_remove(&rb, 0, rd, 8, 1), 8);
+   ASSERT_EQ(emb_rb_used_space(&rb), 504);
+   ASSERT_EQ(emb_rb_free_space(&rb), 8);
+   ASSERT_EQ(memcmp(pattern, rd, 8), 0);
+
+   // Remove everything after index 128 till the end. Validate the reads
+   for (int i = 128; i < size - 8; i += 8)
+   {
+      ASSERT_EQ(emb_rb_remove(&rb, 128, rd, 8, 1), 8);
+      ASSERT_EQ(memcmp(pattern, rd, 8), 0);
+   }
+
+   // Verify we have 128 bytes left
+   ASSERT_EQ(emb_rb_used_space(&rb), 128);
+   ASSERT_EQ(emb_rb_free_space(&rb), 384);
+
+   // Remove the last 120 bytes using an offset of 8, no read
+   ASSERT_EQ(emb_rb_remove(&rb, 8, NULL, 120, 1), 120);
+   ASSERT_EQ(emb_rb_used_space(&rb), 8);
+   ASSERT_EQ(emb_rb_free_space(&rb), 504);
+
+   // Read out the last 8 bytes using dequeue
+   ASSERT_EQ(emb_rb_dequeue(&rb, rd, 8), 8);
+   ASSERT_EQ(memcmp(pattern, rd, 8), 0);
+
+   // Verify we have 0 bytes left
+   ASSERT_EQ(emb_rb_used_space(&rb), 0);
+
+   // Try to underflow it
+   ASSERT_EQ(emb_rb_remove(&rb, 0, rd, 8, 1), 0);
+   ASSERT_EQ(emb_rb_remove(&rb, 0, rd, 8, 0), 0);
+
+   // Fill the buffer all the way up
+   for (int i = 0; i < size; i += 8)
+   {
+      ASSERT_EQ(emb_rb_queue(&rb, pattern, 8), 8);
+   }
+
+   // Try to remove more than we have, all or nothing
+   uint8_t big_rd[512];
+   ASSERT_EQ(emb_rb_remove(&rb, 0, big_rd, size + 1, 1), 0);
+
+   // Try to remove more than we have, no all or nothing
+   ASSERT_EQ(emb_rb_remove(&rb, 0, big_rd, size + 1, 0), 512);
+
+   // Verify we have 0 bytes left
+   ASSERT_EQ(emb_rb_used_space(&rb), 0);
+
+   // Ensure the readout is correct
+   for (int i = 0; i < size; i += 8)
+   {
+      ASSERT_EQ(memcmp(pattern, &big_rd[i], 8), 0);
+   }
+}
+
 // Test getting the version
 TEST_F(RBTesting, Test_Version)
 {
