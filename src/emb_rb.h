@@ -8,12 +8,14 @@ extern "C"
 
 #include <stdint.h>
 #include <stddef.h>
+#include <pthread.h>
 
 typedef struct
 {
-   uint8_t *bP;
-   uint32_t size;
-   size_t   head, tail;
+   uint8_t *       bP;
+   uint32_t        size;
+   size_t          head, tail;
+   pthread_mutex_t lock;
 } emb_rb_t;
 
 /**

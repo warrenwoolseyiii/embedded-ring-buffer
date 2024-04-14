@@ -1,6 +1,29 @@
 #include "emb_rb.h"
 #include "rb_version.h"
+#include <stdint.h>
 #include <string.h>
+
+// Internal helper methods, that are mutex safe
+
+// Get the number of free bytes in the ring buffer
+static uint32_t _internal_emb_rb_free_space(emb_rb_t *rb)
+{
+   return(rb->size - emb_rb_used_space(rb));
+}
+
+// Get the number of used bytes in the ring buffer
+static uint32_t _internal_emb_rb_used_space(emb_rb_t *rb)
+{
+   // Handle the integer wrap around
+   if (rb->head < rb->tail)
+   {
+      return(rb->size - (rb->tail - rb->head));
+   }
+   else
+   {
+      return(rb->head - rb->tail);
+   }
+}
 
 // Initialize the ring buffer
 int emb_rb_init(emb_rb_t *rb, uint8_t *bP, uint32_t size)
@@ -14,6 +37,7 @@ int emb_rb_init(emb_rb_t *rb, uint8_t *bP, uint32_t size)
    rb->size = size;
    rb->head = 0;
    rb->tail = 0;
+   pthread_mutex_init(&rb->lock, NULL);
    return(-1);
 }
 
@@ -25,7 +49,11 @@ uint32_t emb_rb_size(emb_rb_t *rb)
    {
       return(0);
    }
-   return(rb->size);
+   // Lock the buffer, get the size, and unlock
+   pthread_mutex_lock(&rb->lock);
+   uint32_t size = rb->size;
+   pthread_mutex_unlock(&rb->lock);
+   return(size);
 }
 
 // Queue a single byte into the ring buffer, making a deep copy
@@ -36,15 +64,20 @@ uint8_t emb_rb_queue_single(emb_rb_t *rb, uint8_t byte)
    {
       return(0);
    }
+   // Lock the buffer
+   pthread_mutex_lock(&rb->lock);
+   uint8_t ret = 0;
    // Check if there is enough free space
-   if (!emb_rb_free_space(rb))
+   if (_internal_emb_rb_free_space(rb))
    {
-      return(0);
+      // Queue the byte
+      rb->bP[rb->head % rb->size] = byte;
+      rb->head++;
+      ret = 1;
    }
-   // Queue the byte
-   rb->bP[rb->head % rb->size] = byte;
-   rb->head++;
-   return(1);
+   // Unlock the buffer
+   pthread_mutex_unlock(&rb->lock);
+   return(ret);
 }
 
 // Queue len nubmer of bytes into the ring buffer, making a deep copy
@@ -55,8 +88,10 @@ uint32_t emb_rb_queue(emb_rb_t *rb, const uint8_t *bytes, uint32_t len)
    {
       return(0);
    }
+   // Lock the buffer
+   pthread_mutex_lock(&rb->lock);
    // Check if there is enough free space
-   uint32_t space = emb_rb_free_space(rb);
+   uint32_t space = _internal_emb_rb_free_space(rb);
    if (len > space)
    {
       len = space;
@@ -85,6 +120,8 @@ uint32_t emb_rb_queue(emb_rb_t *rb, const uint8_t *bytes, uint32_t len)
       memcpy(rb->bP + cur_index, bytes, n);
       rb->head += len;
    }
+   // Unlock the buffer
+   pthread_mutex_unlock(&rb->lock);
    return(len);
 }
 
@@ -96,8 +133,10 @@ uint32_t emb_rb_dequeue(emb_rb_t *rb, uint8_t *bytes, uint32_t len)
    {
       return(0);
    }
+   // Lock the buffer
+   pthread_mutex_lock(&rb->lock);
    // Check if there is enough used space
-   uint32_t used = emb_rb_used_space(rb);
+   uint32_t used = _internal_emb_rb_used_space(rb);
    if (len > used)
    {
       len = used;
@@ -126,6 +165,8 @@ uint32_t emb_rb_dequeue(emb_rb_t *rb, uint8_t *bytes, uint32_t len)
       memcpy(bytes, rb->bP + cur_index, n);
       rb->tail += len;
    }
+   // Unlock the buffer
+   pthread_mutex_unlock(&rb->lock);
    return(len);
 }
 
@@ -137,15 +178,19 @@ uint32_t emb_rb_peek(emb_rb_t *rb, uint32_t position, uint8_t *bytes, uint32_t l
    {
       return(0);
    }
+   // Lock the buffer
+   pthread_mutex_lock(&rb->lock);
    // Illegal position check
-   if (position > rb->size || (position > emb_rb_used_space(rb)))
+   if (position > rb->size || (position > _internal_emb_rb_used_space(rb)))
    {
+      // Unlock the buffer
+      pthread_mutex_unlock(&rb->lock);
       return(0);
    }
    // Illegal length + position check
-   if (position + len > emb_rb_used_space(rb))
+   if (position + len > _internal_emb_rb_used_space(rb))
    {
-      len = emb_rb_used_space(rb) - position;
+      len = _internal_emb_rb_used_space(rb) - position;
    }
    // 1. If len is 1, just copy the byte and index since we will have a modulo anyway
    // 2. if len is greater than 1, handle the wrap around
@@ -170,6 +215,8 @@ uint32_t emb_rb_peek(emb_rb_t *rb, uint32_t position, uint8_t *bytes, uint32_t l
       }
       memcpy(bytes, rb->bP + cur_index, n);
    }
+   // Unlock the buffer
+   pthread_mutex_unlock(&rb->lock);
    return(len);
 }
 
@@ -181,18 +228,23 @@ uint32_t emb_rb_insert(emb_rb_t *rb, uint32_t position, const uint8_t *bytes, ui
    {
       return(0);
    }
+   // Lock the buffer
+   pthread_mutex_lock(&rb->lock);
    // Illegal position check
-   if (position > rb->size || (position > emb_rb_used_space(rb)))
+   if (position > rb->size || (position > _internal_emb_rb_used_space(rb)))
    {
+      // Unlock the buffer
+      pthread_mutex_unlock(&rb->lock);
       return(0);
    }
-
    // Check if there is enough free space
-   uint32_t space = emb_rb_free_space(rb);
+   uint32_t space = _internal_emb_rb_free_space(rb);
    if (len > space)
    {
       if (all_or_nothing)
       {
+         // Unlock the buffer
+         pthread_mutex_unlock(&rb->lock);
          return(0);
       }
       else
@@ -200,10 +252,9 @@ uint32_t emb_rb_insert(emb_rb_t *rb, uint32_t position, const uint8_t *bytes, ui
          len = space;
       }
    }
-
    // Calculate the real position in the buffer
    uint32_t pos_index = (rb->tail + position) % rb->size;
-   uint32_t end_index = (rb->tail + emb_rb_used_space(rb)) % rb->size;
+   uint32_t end_index = (rb->tail + _internal_emb_rb_used_space(rb)) % rb->size;
 
    // Calculate the displacement considering the circular buffer.
    uint32_t displacement = (pos_index > end_index) ? (rb->size - pos_index + end_index) : (end_index - pos_index);
@@ -223,6 +274,8 @@ uint32_t emb_rb_insert(emb_rb_t *rb, uint32_t position, const uint8_t *bytes, ui
    }
    memcpy(rb->bP + pos_index, bytes, n);
    rb->head += len;
+   // Unlock the buffer
+   pthread_mutex_unlock(&rb->lock);
    return(len);
 }
 
@@ -234,9 +287,13 @@ uint32_t emb_rb_remove(emb_rb_t *rb, uint32_t position, uint8_t *bytes, uint32_t
    {
       return(0);
    }
+   // Lock the buffer
+   pthread_mutex_lock(&rb->lock);
    // Illegal position check
-   if (position > rb->size || position > emb_rb_used_space(rb))
+   if (position > rb->size || position > _internal_emb_rb_used_space(rb))
    {
+      // Unlock the buffer
+      pthread_mutex_unlock(&rb->lock);
       return(0);
    }
 
@@ -248,14 +305,18 @@ uint32_t emb_rb_remove(emb_rb_t *rb, uint32_t position, uint8_t *bytes, uint32_t
    uint32_t displacement = (end_index > pos_index) ? (end_index - pos_index) : (rb->size + end_index - pos_index);
 
    // Respect all or nothing
-   if (emb_rb_used_space(rb) == 0)
+   if (_internal_emb_rb_used_space(rb) == 0)
    {
+      // Unlock the buffer
+      pthread_mutex_unlock(&rb->lock);
       return(0);
    }
    if (displacement < len)
    {
       if (all_or_nothing)
       {
+         // Unlock the buffer
+         pthread_mutex_unlock(&rb->lock);
          return(0);
       }
       else
@@ -293,6 +354,8 @@ uint32_t emb_rb_remove(emb_rb_t *rb, uint32_t position, uint8_t *bytes, uint32_t
    // Adjust the head of the buffer.
    rb->head -= len;
 
+   // Unlock the buffer
+   pthread_mutex_unlock(&rb->lock);
    return(len);
 }
 
@@ -304,7 +367,11 @@ int emb_rb_flush(emb_rb_t *rb)
    {
       return(0);
    }
+   // Lock the buffer
+   pthread_mutex_lock(&rb->lock);
    rb->tail = rb->head;
+   // Unlock the buffer
+   pthread_mutex_unlock(&rb->lock);
    return(-1);
 }
 
@@ -316,34 +383,59 @@ uint32_t emb_rb_flush_partial(emb_rb_t *rb, uint32_t len)
    {
       return(0);
    }
+   // Lock the buffer
+   pthread_mutex_lock(&rb->lock);
    // Check if there is enough used space
-   uint32_t used = emb_rb_used_space(rb);
+   uint32_t used = _internal_emb_rb_used_space(rb);
    if (len > used)
    {
       len = used;
    }
    rb->tail += len;
+   // Unlock the buffer
+   pthread_mutex_unlock(&rb->lock);
    return(len);
 }
 
 // Get the number of free bytes in the ring buffer
 uint32_t emb_rb_free_space(emb_rb_t *rb)
 {
-   return(rb->size - emb_rb_used_space(rb));
+   // Null check
+   if (!rb)
+   {
+      return(0);
+   }
+   // Lock the buffer
+   pthread_mutex_lock(&rb->lock);
+   uint32_t ret = (rb->size - _internal_emb_rb_used_space(rb));
+   // Unlock the buffer
+   pthread_mutex_unlock(&rb->lock);
+   return(ret);
 }
 
 // Get the number of used bytes in the ring buffer
 uint32_t emb_rb_used_space(emb_rb_t *rb)
 {
+   // Null check
+   if (!rb)
+   {
+      return(0);
+   }
+   // Lock the buffer
+   pthread_mutex_lock(&rb->lock);
    // Handle the integer wrap around
+   uint32_t ret = 0;
    if (rb->head < rb->tail)
    {
-      return(rb->size - (rb->tail - rb->head));
+      ret = (rb->size - (rb->tail - rb->head));
    }
    else
    {
-      return(rb->head - rb->tail);
+      ret = (rb->head - rb->tail);
    }
+   // Unlock the buffer
+   pthread_mutex_unlock(&rb->lock);
+   return(ret);
 }
 
 // Get the version of the library
