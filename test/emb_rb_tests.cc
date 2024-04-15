@@ -624,6 +624,7 @@ TEST_F(RBTesting, Test_Concurrency)
                      {
                         ASSERT_EQ(t1_err, EMB_RB_ERR_LOCK);
                      }
+                     std::this_thread::sleep_for(std::chrono::milliseconds(10));
                   }
       });
 
@@ -643,6 +644,7 @@ TEST_F(RBTesting, Test_Concurrency)
                      {
                         ASSERT_EQ(t2_err, EMB_RB_ERR_LOCK);
                      }
+                     std::this_thread::sleep_for(std::chrono::milliseconds(10));
                   }
       });
 
@@ -686,7 +688,7 @@ TEST_F(RBTesting, Test_ConcurrencyComprehensive)
                      {
                         ASSERT_EQ(err, EMB_RB_ERR_LOCK);
                      }
-                     printf("Free space: %d\n", emb_rb_free_space(&rb));
+                     std::this_thread::sleep_for(std::chrono::milliseconds(10));
                   }
       });
 
@@ -705,6 +707,7 @@ TEST_F(RBTesting, Test_ConcurrencyComprehensive)
                         ASSERT_EQ(pattern[3], 0x04);
                         ASSERT_EQ(pattern[4], 0x05);
                      }
+                     std::this_thread::sleep_for(std::chrono::milliseconds(10));
                   }
       });
 
@@ -723,6 +726,7 @@ TEST_F(RBTesting, Test_ConcurrencyComprehensive)
                         ASSERT_EQ(pattern[3], 0x04);
                         ASSERT_EQ(pattern[4], 0x05);
                      }
+                     std::this_thread::sleep_for(std::chrono::milliseconds(10));
                   }
       });
 
@@ -735,7 +739,7 @@ TEST_F(RBTesting, Test_ConcurrencyComprehensive)
    while (emb_rb_free_space(&rb) != 0)
    {
       // Do nothing
-      printf("Main thread waiting for free space\n");
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
    }
 
    ASSERT_EQ(emb_rb_free_space(&rb), 0);
