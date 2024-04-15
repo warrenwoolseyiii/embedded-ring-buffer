@@ -1,3 +1,24 @@
+//MIT License
+//
+//Copyright (c) 2023 budgettsfrog
+//
+//Permission is hereby granted, free of charge, to any person obtaining a copy
+//of this software and associated documentation files (the "Software"), to deal
+//in the Software without restriction, including without limitation the rights
+//to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+//copies of the Software, and to permit persons to whom the Software is
+//furnished to do so, subject to the following conditions:
+//
+//The above copyright notice and this permission notice shall be included in all
+//copies or substantial portions of the Software.
+//
+//THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+//IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+//FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+//AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+//LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+//OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+//SOFTWARE.
 #ifndef EMB_RB_H_
 #define EMB_RB_H_
 
@@ -8,12 +29,20 @@ extern "C"
 
 #include <stdint.h>
 #include <stddef.h>
+#include <pthread.h>
+
+#define EMB_RB_ERR_OK              0
+#define EMB_RB_ERR_ILLEGAL_ARGS    -1
+#define EMB_RB_ERR_LOCK            -2
+#define EMB_RB_ERR_BUFFER_FULL     -3
+#define EMB_RB_ERR_BUFFER_EMPTY    -4
 
 typedef struct
 {
-   uint8_t *bP;
-   uint32_t size;
-   size_t   head, tail;
+   uint8_t *       bP;
+   uint32_t        size;
+   size_t          head, tail;
+   pthread_mutex_t lock;
 } emb_rb_t;
 
 /**
@@ -22,7 +51,7 @@ typedef struct
  * @param rb pointer to the ring buffer we want to initialize
  * @param bP pointer to the buffer we want to use
  * @param size size of the buffer we want to use
- * @return uint32_t returns 0 on failure, -1 on success
+ * @return EMB_RB_ERR_OK on success, negative error code on failure
  */
 int emb_rb_init(emb_rb_t *rb, uint8_t *bP, uint32_t size);
 
@@ -30,18 +59,20 @@ int emb_rb_init(emb_rb_t *rb, uint8_t *bP, uint32_t size);
  * @brief Get the total size of the ring buffer
  *
  * @param rb pointer to the ring buffer we want to get the size of
+ * @param err pointer to the error code, can be NULL
  * @return uint32_t the size of the ring buffer in bytes
  */
-uint32_t emb_rb_size(emb_rb_t *rb);
+uint32_t emb_rb_size(emb_rb_t *rb, int *err);
 
 /**
  * @brief Queue a single byte into the ring buffer, making a deep copy
  *
  * @param rb pointer to the ring buffer we want to queue a byte into
  * @param byte the byte we want to queue
+ * @param err pointer to the error code, can be NULL
  * @return uint8_t 1 if successful, 0 if not
  */
-uint8_t emb_rb_queue_single(emb_rb_t *rb, uint8_t byte);
+uint8_t emb_rb_queue_single(emb_rb_t *rb, uint8_t byte, int *err);
 
 /**
  * @brief Queue len nubmer of bytes into the ring buffer, making a deep copy
@@ -49,9 +80,10 @@ uint8_t emb_rb_queue_single(emb_rb_t *rb, uint8_t byte);
  * @param rb pointer to the ring buffer we want to queue bytes into
  * @param bytes pointer to the bytes we want to queue
  * @param len number of bytes we want to queue
+ * @param err pointer to the error code, can be NULL
  * @return uint32_t number of bytes queued
  */
-uint32_t emb_rb_queue(emb_rb_t *rb, const uint8_t *bytes, uint32_t len);
+uint32_t emb_rb_queue(emb_rb_t *rb, const uint8_t *bytes, uint32_t len, int *err);
 
 /**
  * @brief Dequeue len number of bytes from the ring buffer
@@ -59,9 +91,10 @@ uint32_t emb_rb_queue(emb_rb_t *rb, const uint8_t *bytes, uint32_t len);
  * @param rb pointer to the ring buffer we want to dequeue bytes from
  * @param bytes pointer to the bytes we want to dequeue
  * @param len number of bytes we want to dequeue
+ * @param err pointer to the error code, can be NULL
  * @return uint32_t number of bytes dequeued
  */
-uint32_t emb_rb_dequeue(emb_rb_t *rb, uint8_t *bytes, uint32_t len);
+uint32_t emb_rb_dequeue(emb_rb_t *rb, uint8_t *bytes, uint32_t len, int *err);
 
 /**
  * @brief Peek len number of bytes from the ring buffer without dequeuing
@@ -137,6 +170,12 @@ uint32_t emb_rb_used_space(emb_rb_t *rb);
  * @return const char* version string
  */
 const char *emb_rb_get_ver();
+
+/**
+ * @brief Destry the emb_rb_t object
+ * @param rb pointer to the ring buffer we want to destroy
+ */
+void emb_rb_destroy(emb_rb_t *rb);
 
 #ifdef __cplusplus
 }
