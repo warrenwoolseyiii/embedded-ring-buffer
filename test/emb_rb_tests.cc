@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include <string.h>
+#include <thread>
 #include "../src/emb_rb.h"
 
 class RBTesting : public ::testing::Test
@@ -594,4 +595,146 @@ TEST_F(RBTesting, Test_Version)
 
    ASSERT_TRUE(s != NULL);
    printf("emb_rb_version: %s\n", s);
+}
+
+// Test concurrency
+TEST_F(RBTesting, Test_Concurrency)
+{
+   emb_rb_t rb;
+   uint8_t  buf[1000];
+   uint32_t size = 1000;
+   uint8_t  data = 0x55;
+   int      err;
+
+   ASSERT_EQ(emb_rb_init(&rb, buf, size), EMB_RB_ERR_OK);
+
+   // Create a thread to queue data
+   std::thread t1([&rb]() {
+                  uint8_t t1_data = 0x01;
+                  int t1_err;
+                  for (int i = 0; i < 500; )
+                  {
+                     int rtn = emb_rb_queue(&rb, &t1_data, 1, &t1_err);
+                     if (rtn == 1)
+                     {
+                        i++;
+                        ASSERT_EQ(t1_err, EMB_RB_ERR_OK);
+                     }
+                     else
+                     {
+                        ASSERT_EQ(t1_err, EMB_RB_ERR_LOCK);
+                     }
+                  }
+      });
+
+   // Create a thread to queue data
+   std::thread t2([&rb]() {
+                  uint8_t t2_data = 0x02;
+                  int t2_err;
+                  for (int i = 0; i < 500; )
+                  {
+                     int rtn = emb_rb_queue(&rb, &t2_data, 1, &t2_err);
+                     if (rtn == 1)
+                     {
+                        i++;
+                        ASSERT_EQ(t2_err, EMB_RB_ERR_OK);
+                     }
+                     else
+                     {
+                        ASSERT_EQ(t2_err, EMB_RB_ERR_LOCK);
+                     }
+                  }
+      });
+
+   // Start the threads
+   t1.join();
+   t2.join();
+
+   // Keep checking the used space until it's 1000
+   while (emb_rb_used_space(&rb) != 1000)
+   {
+      // Do nothing
+   }
+
+   ASSERT_EQ(emb_rb_used_space(&rb), 1000);
+   emb_rb_destroy(&rb);
+}
+
+// Test concurrency operations
+TEST_F(RBTesting, Test_ConcurrencyComprehensive)
+{
+   emb_rb_t rb;
+   uint8_t  buf[1000];
+   uint32_t size = 1000;
+   uint8_t  data = 0x55;
+   int      err;
+
+   ASSERT_EQ(emb_rb_init(&rb, buf, size), EMB_RB_ERR_OK);
+
+   // Create a thread to queue data
+   std::thread t1([&rb]() {
+                  int err;
+                  uint8_t pattern[] = { 0x01, 0x02, 0x03, 0x04, 0x05 };
+                  while (emb_rb_free_space(&rb) > 0)
+                  {
+                     int rtn = emb_rb_queue(&rb, pattern, 5, &err);
+                     if (rtn == 5)
+                     {
+                        ASSERT_EQ(err, EMB_RB_ERR_OK);
+                     }
+                     else
+                     {
+                        ASSERT_EQ(err, EMB_RB_ERR_LOCK);
+                     }
+                  }
+      });
+
+   // Create a thread to peak the data
+   std::thread t2([&rb]() {
+                  int err;
+                  uint8_t pattern[5];
+                  for (int i = 0; i < 200; i++)
+                  {
+                     int rtn = emb_rb_peek(&rb, 0, pattern, 5);
+                     if (rtn == 5)
+                     {
+                        ASSERT_EQ(pattern[0], 0x01);
+                        ASSERT_EQ(pattern[1], 0x02);
+                        ASSERT_EQ(pattern[2], 0x03);
+                        ASSERT_EQ(pattern[3], 0x04);
+                        ASSERT_EQ(pattern[4], 0x05);
+                     }
+                  }
+      });
+
+   // Create a thread to dequeue the data
+   std::thread t3([&rb]() {
+                  int err;
+                  uint8_t pattern[5];
+                  for (int i = 0; i < 200; i++)
+                  {
+                     int rtn = emb_rb_dequeue(&rb, pattern, 5, &err);
+                     if (rtn == 5)
+                     {
+                        ASSERT_EQ(pattern[0], 0x01);
+                        ASSERT_EQ(pattern[1], 0x02);
+                        ASSERT_EQ(pattern[2], 0x03);
+                        ASSERT_EQ(pattern[3], 0x04);
+                        ASSERT_EQ(pattern[4], 0x05);
+                     }
+                  }
+      });
+
+   // Start the threads
+   t1.join();
+   t2.join();
+   t3.join();
+
+   // Keep checking the free space until it's 0
+   while (emb_rb_free_space(&rb) != 0)
+   {
+      // Do nothing
+   }
+
+   ASSERT_EQ(emb_rb_free_space(&rb), 0);
 }
