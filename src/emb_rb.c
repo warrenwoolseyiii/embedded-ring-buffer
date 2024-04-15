@@ -5,12 +5,6 @@
 
 // Internal helper methods, that are mutex safe
 
-// Get the number of free bytes in the ring buffer
-static uint32_t _internal_emb_rb_free_space(emb_rb_t *rb)
-{
-   return(rb->size - emb_rb_used_space(rb));
-}
-
 // Get the number of used bytes in the ring buffer
 static uint32_t _internal_emb_rb_used_space(emb_rb_t *rb)
 {
@@ -25,47 +19,85 @@ static uint32_t _internal_emb_rb_used_space(emb_rb_t *rb)
    }
 }
 
+// Get the number of free bytes in the ring buffer
+static uint32_t _internal_emb_rb_free_space(emb_rb_t *rb)
+{
+   return(rb->size - _internal_emb_rb_used_space(rb));
+}
+
 // Initialize the ring buffer
 int emb_rb_init(emb_rb_t *rb, uint8_t *bP, uint32_t size)
 {
    // Null check
    if (!rb || !bP || !size)
    {
-      return(0);
+      return(EMB_RB_ERR_ILLEGAL_ARGS);
    }
    rb->bP   = bP;
    rb->size = size;
    rb->head = 0;
    rb->tail = 0;
-   pthread_mutex_init(&rb->lock, NULL);
-   return(-1);
+   if (pthread_mutex_init(&rb->lock, NULL) != 0)
+   {
+      return(EMB_RB_ERR_LOCK);
+   }
+   return(EMB_RB_ERR_OK);
 }
 
 // Get the total size of the ring buffer
-uint32_t emb_rb_size(emb_rb_t *rb)
+uint32_t emb_rb_size(emb_rb_t *rb, int *err)
 {
    // Null check
    if (!rb)
    {
+      if (err)
+      {
+         *err = EMB_RB_ERR_ILLEGAL_ARGS;
+      }
       return(0);
    }
    // Lock the buffer, get the size, and unlock
-   pthread_mutex_lock(&rb->lock);
+   if (pthread_mutex_trylock(&rb->lock) != 0)
+   {
+      if (err)
+      {
+         *err = EMB_RB_ERR_LOCK;
+      }
+      return(0);
+   }
    uint32_t size = rb->size;
    pthread_mutex_unlock(&rb->lock);
+
+   // Set the error code
+   if (err)
+   {
+      *err = EMB_RB_ERR_OK;
+   }
+
    return(size);
 }
 
 // Queue a single byte into the ring buffer, making a deep copy
-uint8_t emb_rb_queue_single(emb_rb_t *rb, uint8_t byte)
+uint8_t emb_rb_queue_single(emb_rb_t *rb, uint8_t byte, int *err)
 {
    // Null check
    if (!rb)
    {
+      if (err)
+      {
+         *err = EMB_RB_ERR_ILLEGAL_ARGS;
+      }
       return(0);
    }
    // Lock the buffer
-   pthread_mutex_lock(&rb->lock);
+   if (pthread_mutex_trylock(&rb->lock) != 0)
+   {
+      if (err)
+      {
+         *err = EMB_RB_ERR_LOCK;
+      }
+      return(0);
+   }
    uint8_t ret = 0;
    // Check if there is enough free space
    if (_internal_emb_rb_free_space(rb))
@@ -74,6 +106,16 @@ uint8_t emb_rb_queue_single(emb_rb_t *rb, uint8_t byte)
       rb->bP[rb->head % rb->size] = byte;
       rb->head++;
       ret = 1;
+
+      // Set the error code
+      if (err)
+      {
+         *err = EMB_RB_ERR_OK;
+      }
+   }
+   else if (err)
+   {
+      *err = EMB_RB_ERR_BUFFER_FULL;
    }
    // Unlock the buffer
    pthread_mutex_unlock(&rb->lock);
@@ -81,15 +123,26 @@ uint8_t emb_rb_queue_single(emb_rb_t *rb, uint8_t byte)
 }
 
 // Queue len nubmer of bytes into the ring buffer, making a deep copy
-uint32_t emb_rb_queue(emb_rb_t *rb, const uint8_t *bytes, uint32_t len)
+uint32_t emb_rb_queue(emb_rb_t *rb, const uint8_t *bytes, uint32_t len, int *err)
 {
    // Null check
    if (!rb || !bytes || !len)
    {
+      if (err)
+      {
+         *err = EMB_RB_ERR_ILLEGAL_ARGS;
+      }
       return(0);
    }
    // Lock the buffer
-   pthread_mutex_lock(&rb->lock);
+   if (pthread_mutex_trylock(&rb->lock) != 0)
+   {
+      if (err)
+      {
+         *err = EMB_RB_ERR_LOCK;
+      }
+      return(0);
+   }
    // Check if there is enough free space
    uint32_t space = _internal_emb_rb_free_space(rb);
    if (len > space)
@@ -122,19 +175,42 @@ uint32_t emb_rb_queue(emb_rb_t *rb, const uint8_t *bytes, uint32_t len)
    }
    // Unlock the buffer
    pthread_mutex_unlock(&rb->lock);
+
+   if (err)
+   {
+      if (len > 0)
+      {
+         *err = EMB_RB_ERR_OK;
+      }
+      else
+      {
+         *err = EMB_RB_ERR_BUFFER_FULL;
+      }
+   }
    return(len);
 }
 
 // Dequeue len number of bytes from the ring buffer
-uint32_t emb_rb_dequeue(emb_rb_t *rb, uint8_t *bytes, uint32_t len)
+uint32_t emb_rb_dequeue(emb_rb_t *rb, uint8_t *bytes, uint32_t len, int *err)
 {
    // Null check
    if (!rb || !bytes || !len)
    {
+      if (err)
+      {
+         *err = EMB_RB_ERR_ILLEGAL_ARGS;
+      }
       return(0);
    }
    // Lock the buffer
-   pthread_mutex_lock(&rb->lock);
+   if (pthread_mutex_trylock(&rb->lock) != 0)
+   {
+      if (err)
+      {
+         *err = EMB_RB_ERR_LOCK;
+      }
+      return(0);
+   }
    // Check if there is enough used space
    uint32_t used = _internal_emb_rb_used_space(rb);
    if (len > used)
@@ -167,6 +243,18 @@ uint32_t emb_rb_dequeue(emb_rb_t *rb, uint8_t *bytes, uint32_t len)
    }
    // Unlock the buffer
    pthread_mutex_unlock(&rb->lock);
+
+   if (err)
+   {
+      if (len > 0)
+      {
+         *err = EMB_RB_ERR_OK;
+      }
+      else
+      {
+         *err = EMB_RB_ERR_BUFFER_EMPTY;
+      }
+   }
    return(len);
 }
 
@@ -465,4 +553,15 @@ const char *emb_rb_get_ver()
 
    // Return the string
    return(ver);
+}
+
+void emb_rb_destroy(emb_rb_t *rb)
+{
+   // Null check
+   if (!rb)
+   {
+      return;
+   }
+   // Destroy the mutex
+   pthread_mutex_destroy(&rb->lock);
 }

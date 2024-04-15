@@ -17,7 +17,7 @@ static emb_rb_t rb;
 // Fill the buffer with dummy data
 static void fill()
 {
-   emb_rb_queue(&rb, dummy, sizeof(dummy));
+   emb_rb_queue(&rb, dummy, sizeof(dummy), NULL);
 }
 
 // Empty the buffer
@@ -54,7 +54,7 @@ static void BM_queue(benchmark::State& state)
 
    for (auto _ : state)
    {
-      n += emb_rb_queue(&rb, pattern, len);
+      n += emb_rb_queue(&rb, pattern, len, NULL);
    }
    benchmark::DoNotOptimize(n);
    state.SetBytesProcessed(len * state.iterations());
@@ -72,7 +72,7 @@ static void BM_dequeue(benchmark::State& state)
 
    for (auto _ : state)
    {
-      n += emb_rb_dequeue(&rb, pattern, len);
+      n += emb_rb_dequeue(&rb, pattern, len, NULL);
    }
    benchmark::DoNotOptimize(n);
    state.SetBytesProcessed(len * state.iterations());
@@ -141,7 +141,7 @@ static void BM_insert(benchmark::State& state)
    uint32_t len = state.range(0);
    uint32_t n   = 0;
 
-   emb_rb_queue(&rb, pattern, len);
+   emb_rb_queue(&rb, pattern, len, NULL);
 
    for (auto _ : state)
    {
@@ -163,7 +163,7 @@ static void BM_single_queue(benchmark::State& state)
 
    for (auto _ : state)
    {
-      n += emb_rb_queue_single(&rb, pattern[n]);
+      n += emb_rb_queue_single(&rb, pattern[n], NULL);
       n %= sizeof(pattern);
    }
    benchmark::DoNotOptimize(n);
