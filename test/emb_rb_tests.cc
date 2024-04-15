@@ -726,9 +726,9 @@ TEST_F(RBTesting, Test_ConcurrencyComprehensive)
       });
 
    // Start the threads
-   t1.join();
    t2.join();
    t3.join();
+   t1.join();
 
    // Keep checking the free space until it's 0
    while (emb_rb_free_space(&rb) != 0)
