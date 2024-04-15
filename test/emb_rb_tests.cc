@@ -686,6 +686,7 @@ TEST_F(RBTesting, Test_ConcurrencyComprehensive)
                      {
                         ASSERT_EQ(err, EMB_RB_ERR_LOCK);
                      }
+                     printf("Free space: %d\n", emb_rb_free_space(&rb));
                   }
       });
 
@@ -734,6 +735,7 @@ TEST_F(RBTesting, Test_ConcurrencyComprehensive)
    while (emb_rb_free_space(&rb) != 0)
    {
       // Do nothing
+      printf("Main thread waiting for free space\n");
    }
 
    ASSERT_EQ(emb_rb_free_space(&rb), 0);
