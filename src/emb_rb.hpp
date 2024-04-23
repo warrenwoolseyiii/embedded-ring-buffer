@@ -1,11 +1,6 @@
 #ifndef EMB_RB_H_
 #define EMB_RB_H_
 
-#ifdef __cplusplus
-extern "C"
-{
-#endif
-
 #include <stdint.h>
 #include <stddef.h>
 
@@ -137,9 +132,5 @@ uint32_t emb_rb_used_space(emb_rb_t *rb);
  * @return const char* version string
  */
 const char *emb_rb_get_ver();
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* EMB_RB_H_ */

@@ -1,4 +1,4 @@
-#include "emb_rb.h"
+#include "emb_rb.hpp"
 #include "rb_version.h"
 #include <string.h>
 
